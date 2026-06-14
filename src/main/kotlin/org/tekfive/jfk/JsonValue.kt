@@ -6,6 +6,7 @@ import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
 import kotlin.reflect.KProperty
+import kotlin.time.Instant
 
 
 /**
@@ -83,7 +84,21 @@ sealed interface JsonValue {
     /** Returns this value as an int, coercing compatible strings. */
     val laxInt: Int? get() = int ?: (this as? JsonString)?.value?.toIntOrNull()
     /** Returns this value as a long, coercing compatible strings. */
-    val laxLong: Long? get() = long ?: (this as? JsonString)?.value?.toLongOrNull()
+    val laxLong: Long? get() {
+        var laxLong = long
+        if (laxLong == null) {
+            val str = laxString
+            if (str != null) {
+                laxLong = str.toLongOrNull()
+                if (laxLong == null) {
+                    try {
+                        laxLong = Instant.parse(str).toEpochMilliseconds()
+                    } catch (e: Exception) {}
+                }
+            }
+        }
+        return laxLong
+    }
     /** Returns this value as a finite double, coercing compatible strings. */
     val laxDouble: Double? get() = double ?: (this as? JsonString)?.value?.toDoubleOrNull()
         ?.takeIf { !it.isNaN() && !it.isInfinite() }
