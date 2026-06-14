@@ -1,6 +1,7 @@
 package org.tekfive.jfk
 
 import org.tekfive.jfk.JsonValue.Companion.toJsonValue
+import java.time.LocalDate
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
@@ -217,6 +218,7 @@ sealed interface JsonValue {
                             "first" to toJsonValue(value.first, visitedValues),
                             "second" to toJsonValue(value.second, visitedValues),
                         ))
+                        is LocalDate -> toJsonValue(value.toString())
                         else -> JsonString(value.toString())
                     }
                 } finally {
