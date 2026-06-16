@@ -46,7 +46,7 @@ class JsonObjectBuilder {
     infix fun String.set(value: ToJsonObject?) { map[this] = value?.toJsonObject() ?: JsonNull }
 
     /** Sets this property name to an array of serialized [ToJsonObject] values. */
-    infix fun String.set(values: List<ToJsonObject>) { map[this] = JsonArray(values) }
+    infix fun String.set(values: List<*>) { map[this] = JsonArray(values) }
 
     /** Sets this property name to an enum constant name or JSON null. */
     infix fun String.setEnum(value: Enum<*>?) { map[this] = value?.let { JsonString(it.name) } ?: JsonNull }
