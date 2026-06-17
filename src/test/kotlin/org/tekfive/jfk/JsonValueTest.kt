@@ -127,4 +127,25 @@ class JsonValueTest {
         assertTrue(JsonString("a") in arr)
         assertFalse(JsonString("b") in arr)
     }
+
+    @Test
+    fun `object plus returns merged object without mutating original`() {
+        val original = JsonObject(mapOf(
+            "id" to "one",
+            "name" to "Original",
+        ))
+
+        val merged = original + mapOf(
+            "name" to "Updated",
+            "displayName" to "Updated Name",
+            "nested" to mapOf("active" to true),
+        )
+
+        assertEquals("Original", original.reqString("name"))
+        assertFalse(original.containsKey("displayName"))
+        assertEquals("one", merged.reqString("id"))
+        assertEquals("Updated", merged.reqString("name"))
+        assertEquals("Updated Name", merged.reqString("displayName"))
+        assertEquals(true, merged.reqObj("nested").reqBoolean("active"))
+    }
 }

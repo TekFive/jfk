@@ -345,6 +345,17 @@ class JsonObject(properties: Map<String, Any?> = emptyMap()) : JsonContainer {
     /** Sets [key] to [value] converted with JFK conversion rules. */
     operator fun set(key: String, value: Any?) { _entries[key] = toJsonValue(value) }
 
+    /**
+     * Returns a new object containing this object's entries overlaid with [values].
+     */
+    operator fun plus(values: Map<String, Any?>): JsonObject {
+        val merged = LinkedHashMap<String, JsonValue>(_entries)
+        for ((key, value) in values) {
+            merged[key] = toJsonValue(value)
+        }
+        return JsonObject(merged)
+    }
+
     /** Returns true when [key] is present, even if its value is [JsonNull]. */
     fun containsKey(key: String): Boolean = _entries.containsKey(key)
     /** Removes [key] and returns the previous value, if any. */
