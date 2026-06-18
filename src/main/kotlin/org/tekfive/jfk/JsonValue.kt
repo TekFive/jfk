@@ -263,15 +263,6 @@ private fun JsonValue.throwReq(expected: String): Nothing {
  * JSON value that can contain nested scalar property paths.
  */
 sealed interface JsonContainer : JsonValue {
-    /**
-     * Returns all dot-separated paths that resolve to scalar values below this container.
-     */
-    fun getScalarPropertyPaths(fieldPathStack: List<String> = listOf()): List<String>
-
-    /**
-     * Returns the value at a dot-separated path, or [JsonNull] when no value exists.
-     */
-    fun getValueAtPath(path: String): JsonValue
 }
 
 /**
@@ -388,33 +379,7 @@ class JsonObject(properties: Map<String, Any?> = emptyMap()) : JsonContainer {
      */
     fun toJsonObject(): JsonObject = this
 
-    override fun getScalarPropertyPaths(fieldPathStack: List<String>): List<String> {
-        val fieldPaths = mutableListOf<String>()
-
-        for ((name, child) in entries) {
-            when (child) {
-                is JsonObject -> {
-                    fieldPaths.addAll(child.getScalarPropertyPaths(fieldPathStack + name))
-                }
-
-                is JsonArray -> {
-                    fieldPaths.addAll(child.getScalarPropertyPaths(fieldPathStack + name))
-                }
-
-                else -> {
-                    fieldPaths.add((fieldPathStack + name).joinToString("."))
-                }
-            }
-        }
-
-        return fieldPaths.distinct()
-    }
-
     override fun toJsonString(indent: Int?): String = JsonWriter.write(this, indent ?: 0)
-
-    override fun getValueAtPath(path: String): JsonValue {
-        return getValueAtPath(path.split('.').map { it.trim() }.filter { it.isNotBlank() }.toMutableList())
-    }
 
     internal fun getValueAtPath(path: MutableList<String>): JsonValue {
         if (path.isEmpty()) {
@@ -446,14 +411,6 @@ class JsonObject(properties: Map<String, Any?> = emptyMap()) : JsonContainer {
     }
 
 }
-
-/**
- * Returns distinct scalar property paths across a list of JSON objects.
- */
-fun List<JsonObject>.getScalarPropertyPaths(): List<String> {
-    return this.flatMap { it.getScalarPropertyPaths() }.distinct()
-}
-
 
 /**
  * Mutable JSON array preserving element order.
@@ -543,26 +500,6 @@ class JsonArray(values: List<Any?> = emptyList()) : JsonContainer {
     override fun hashCode(): Int = _items.hashCode()
 
     override fun toString(): String = "JsonArray(elements=$_items)"
-
-    override fun getScalarPropertyPaths(fieldPathStack: List<String>): List<String> {
-        val fieldPaths = mutableListOf<String>()
-
-        for (child in items) {
-            if (child is JsonObject) {
-                fieldPaths.addAll(child.getScalarPropertyPaths(fieldPathStack))
-            } else if (child is JsonArray) {
-                fieldPaths.addAll(child.getScalarPropertyPaths(fieldPathStack))
-            } else {
-                fieldPaths.add(fieldPathStack.joinToString("."))
-            }
-        }
-
-        return fieldPaths.distinct()
-    }
-
-    override fun getValueAtPath(path: String): JsonValue {
-        return getValueAtPath(path.split('.').map { it.trim() }.filter { it.isNotBlank() }.toMutableList())
-    }
 
     internal fun getValueAtPath(path: MutableList<String>): JsonValue {
         if (path.isEmpty()) {
