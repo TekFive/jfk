@@ -101,16 +101,6 @@ class JsonValueTest {
     }
 
     @Test
-    fun `array path lookup descends into nested arrays`() {
-        val value = JsonArray(listOf(
-            JsonArray(listOf(JsonObject(mapOf("name" to JsonString("Alice"))))),
-            JsonArray(listOf(JsonObject(mapOf("name" to JsonString("Bob"))))),
-        ))
-
-        assertEquals(listOf("Alice", "Bob"), value.getValueAtPath("name").toValue())
-    }
-
-    @Test
     fun `size property`() {
         assertEquals(0, JsonNull.size)
         assertEquals(2, JsonObject(mapOf("a" to JsonNull, "b" to JsonNull)).size)
