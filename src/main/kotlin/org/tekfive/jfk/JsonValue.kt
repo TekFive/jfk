@@ -417,7 +417,7 @@ class JsonObject(properties: Map<String, Any?> = emptyMap()) : JsonContainer {
  *
  * @param values initial elements converted with JFK conversion rules.
  */
-class JsonArray(values: List<Any?> = emptyList()) : JsonContainer {
+class JsonArray(values: Collection<Any?> = emptyList()) : JsonContainer {
 
     private val _items: MutableList<JsonValue> = values.map { toJsonValue(it) }.toMutableList()
 
