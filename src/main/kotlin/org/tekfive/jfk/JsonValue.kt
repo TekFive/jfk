@@ -347,6 +347,15 @@ class JsonObject(properties: Map<String, Any?> = emptyMap()) : JsonContainer {
         return JsonObject(merged)
     }
 
+    /**
+     * Returns a new object containing this object's entries overlaid with [other]'s entries.
+     */
+    operator fun plus(other: JsonObject): JsonObject {
+        val merged = LinkedHashMap<String, JsonValue>(_entries)
+        merged.putAll(other._entries)
+        return JsonObject(merged)
+    }
+
     /** Returns true when [key] is present, even if its value is [JsonNull]. */
     fun containsKey(key: String): Boolean = _entries.containsKey(key)
     /** Removes [key] and returns the previous value, if any. */

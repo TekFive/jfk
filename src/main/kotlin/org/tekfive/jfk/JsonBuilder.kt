@@ -51,6 +51,19 @@ class JsonObjectBuilder {
     /** Sets this property name to an enum constant name or JSON null. */
     infix fun String.setEnum(value: Enum<*>?) { map[this] = value?.let { JsonString(it.name) } ?: JsonNull }
 
+    /**
+     * Sets this property name to [value] converted using JFK conversion rules
+     * ([JsonValue.toJsonValue]). Shadows [kotlin.to] inside the builder so every
+     * `"name" to value` pair becomes a property of the object being built.
+     */
+    infix fun String.to(value: Any?) { map[this] = value.toJsonValue() }
+
+    /** Merges this object's properties into the object being built, overwriting same-named properties. */
+    operator fun JsonObject.unaryPlus() { map.putAll(entries) }
+
+    /** Merges this serialized [ToJsonObject]'s properties into the object being built, overwriting same-named properties. */
+    operator fun ToJsonObject.unaryPlus() { map.putAll(toJsonObject().entries) }
+
     /** Returns the built [JsonObject]. */
     fun build(): JsonObject = JsonObject(map.toMap())
 }

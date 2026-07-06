@@ -78,6 +78,84 @@ class JsonBuilderTest {
     }
 
     @Test
+    fun `build object with to syntax`() {
+        data class User(val name: String) : ToJsonObject
+
+        val obj = json {
+            "name" to "Alice"
+            "age" to 30
+            "active" to true
+            "score" to null
+            "tags" to listOf("kotlin", "json")
+            "user" to User("Bob")
+            "nested" to json {
+                "city" to "Austin"
+            }
+        }
+        assertEquals("Alice", obj["name"].string)
+        assertEquals(30, obj["age"].int)
+        assertEquals(true, obj["active"].boolean)
+        assertTrue(obj["score"].isNull)
+        assertEquals("json", obj["tags"][1].string)
+        assertEquals("Bob", obj["user"]["name"].string)
+        assertEquals("Austin", obj["nested"]["city"].string)
+    }
+
+    @Test
+    fun `to and set syntax interoperate`() {
+        val obj = json {
+            "a" set "one"
+            "b" to "two"
+        }
+        assertEquals("one", obj["a"].string)
+        assertEquals("two", obj["b"].string)
+        assertEquals(listOf("a", "b"), obj.keys.toList())
+    }
+
+    @Test
+    fun `merge object with unary plus`() {
+        val base = json {
+            "name" set "Alice"
+            "age" set 30
+        }
+        val obj = json {
+            +base
+            "additional" set "property"
+        }
+        assertEquals("Alice", obj["name"].string)
+        assertEquals(30, obj["age"].int)
+        assertEquals("property", obj["additional"].string)
+    }
+
+    @Test
+    fun `merge ToJsonObject with unary plus`() {
+        data class User(val name: String, val age: Int) : ToJsonObject
+
+        val obj = json {
+            +User("Bob", 25)
+            "additional" set "property"
+        }
+        assertEquals("Bob", obj["name"].string)
+        assertEquals(25, obj["age"].int)
+        assertEquals("property", obj["additional"].string)
+    }
+
+    @Test
+    fun `merge overwrites earlier properties and is overwritten by later ones`() {
+        val merged = json {
+            "a" set "merged"
+            "b" set "merged"
+        }
+        val obj = json {
+            "a" set "original"
+            +merged
+            "b" set "after"
+        }
+        assertEquals("merged", obj["a"].string)
+        assertEquals("after", obj["b"].string)
+    }
+
+    @Test
     fun `preserves insertion order`() {
         val obj = json {
             "z" set 1

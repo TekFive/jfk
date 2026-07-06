@@ -69,6 +69,26 @@ class JsonMutationTest {
     }
 
     @Test
+    fun `plus merges two objects into a new object`() {
+        val first = json {
+            "name" set "Alice"
+            "age" set 30
+        }
+        val second = json {
+            "age" set 31
+            "active" set true
+        }
+        val merged = first + second
+
+        assertEquals("Alice", merged["name"].string)
+        assertEquals(31, merged["age"].int)
+        assertEquals(true, merged["active"].boolean)
+        // originals are untouched
+        assertEquals(30, first["age"].int)
+        assertTrue(second["name"].isNull)
+    }
+
+    @Test
     fun `set string on array by index`() {
         val arr = jsonArray("a", "b", "c")
         arr[1] = "B"
