@@ -112,7 +112,8 @@ interface FromJsonObject<T : Any> {
      * mutable constructor parameter are ignored. If a JSON value is present for a candidate
      * property but cannot be coerced to the expected type, [onError] is called.
      *
-     * Properties not present in the JSON are left untouched.
+     * Properties not present in the JSON are left untouched. An explicitly-present JSON `null`
+     * clears the property when its type is nullable (and is ignored when it is not).
      *
      * @param instance the existing object to mutate
      * @param json the JSON values to apply
@@ -255,10 +256,17 @@ internal object JsonReflection {
             if (prop.name !in ctorParamNames) continue
             if (prop.name in excludedNames) continue
 
-            val jsonValue = json[prop.name]
-            if (jsonValue.isNull) continue
-
             val param = ctorParamsByName[prop.name] ?: continue
+            val jsonValue = json[prop.name]
+            if (jsonValue.isNull) {
+                // An explicitly-present null clears a nullable property; an absent key
+                // (which also reads as JsonNull) leaves the property untouched.
+                if (json.containsKey(prop.name) && param.type.isMarkedNullable) {
+                    prop.setter.call(instance, null)
+                }
+                continue
+            }
+
             val converted = convertValue(jsonValue, param.type, prop.name, lax)
             prop.setter.call(instance, converted)
         }
@@ -296,10 +304,17 @@ internal object JsonReflection {
         for (prop in mutableProps) {
             if (prop.name !in includedNames) continue
 
-            val jsonValue = json[prop.name]
-            if (jsonValue.isNull) continue
-
             val param = ctorParamsByName[prop.name] ?: continue
+            val jsonValue = json[prop.name]
+            if (jsonValue.isNull) {
+                // An explicitly-present null clears a nullable property; an absent key
+                // (which also reads as JsonNull) leaves the property untouched.
+                if (json.containsKey(prop.name) && param.type.isMarkedNullable) {
+                    prop.setter.call(instance, null)
+                }
+                continue
+            }
+
             val converted = convertValue(jsonValue, param.type, prop.name, lax)
             prop.setter.call(instance, converted)
         }

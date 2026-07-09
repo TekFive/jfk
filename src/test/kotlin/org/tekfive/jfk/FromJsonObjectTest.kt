@@ -468,11 +468,20 @@ class FromJsonObjectTest {
     }
 
     @Test
-    fun `applyJson ignores null JSON values`() {
+    fun `applyJson clears nullable property on explicit null`() {
         val widget = MutableWidget(id = 1, name = "old", description = "keep")
         val json = Json.parse("""{"description":null}""") as JsonObject
         MutableWidget.applyJson(widget, json)
-        assertEquals("keep", widget.description)
+        assertNull(widget.description)
+    }
+
+    @Test
+    fun `applyJson ignores explicit null for non-nullable property`() {
+        val widget = MutableWidget(id = 1, name = "old", count = 5)
+        val json = Json.parse("""{"name":null,"count":10}""") as JsonObject
+        MutableWidget.applyJson(widget, json)
+        assertEquals("old", widget.name)
+        assertEquals(10, widget.count)
     }
 
     // applyJsonOnly
@@ -531,11 +540,19 @@ class FromJsonObjectTest {
     }
 
     @Test
-    fun `applyJsonOnly ignores null JSON values`() {
+    fun `applyJsonOnly clears nullable property on explicit null`() {
         val widget = MutableWidget(id = 1, name = "old", description = "keep")
         val json = Json.parse("""{"description":null}""") as JsonObject
         MutableWidget.applyJsonOnly(widget, json, MutableWidget::description)
-        assertEquals("keep", widget.description)
+        assertNull(widget.description)
+    }
+
+    @Test
+    fun `applyJsonOnly ignores explicit null for non-nullable property`() {
+        val widget = MutableWidget(id = 1, name = "old")
+        val json = Json.parse("""{"name":null}""") as JsonObject
+        MutableWidget.applyJsonOnly(widget, json, MutableWidget::name)
+        assertEquals("old", widget.name)
     }
 
     // Any? property
