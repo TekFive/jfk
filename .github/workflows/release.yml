@@ -1,0 +1,73 @@
+name: release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.5.1"
+
+      - name: Read project version
+        id: project
+        shell: bash
+        run: |
+          version="$(gradle properties --console=plain -q | sed -n 's/^version: //p')"
+          if [[ -z "$version" || "$version" == "unspecified" ]]; then
+            echo "Unable to determine a valid project version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Build and test
+        run: gradle clean build --no-daemon
+
+      - name: Find release artifact
+        id: artifact
+        env:
+          VERSION: ${{ steps.project.outputs.version }}
+        shell: bash
+        run: |
+          mapfile -t jars < <(find build/libs -maxdepth 1 -type f -name "*-${VERSION}.jar" | sort)
+          if [[ "${#jars[@]}" -ne 1 ]]; then
+            echo "Expected one release JAR for version $VERSION, found ${#jars[@]}" >&2
+            printf '%s\n' "${jars[@]}" >&2
+            exit 1
+          fi
+          echo "path=${jars[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Replace release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.project.outputs.version }}
+          ARTIFACT: ${{ steps.artifact.outputs.path }}
+        shell: bash
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+          elif gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            gh api --method DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG"
+          fi
+
+          gh release create "$TAG" "$ARTIFACT" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "$TAG" \
+            --generate-notes
