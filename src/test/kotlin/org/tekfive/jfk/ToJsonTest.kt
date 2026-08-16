@@ -1,5 +1,7 @@
 package org.tekfive.jfk
 
+import java.math.BigInteger
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.*
 
 data class Address(val city: String, val zip: String) : ToJsonObject
@@ -18,8 +20,14 @@ data class Greeting(val name: String) : ToJsonObject {
     )
 }
 
-// Non-ToJson property is skipped
+// Non-ToJson property is rejected
 data class WithOpaque(val name: String, val opaque: Regex) : ToJsonObject
+
+data class WithOpaqueList(val name: String, val values: List<Any>) : ToJsonObject
+
+data class NumericOutput(val short: Short, val large: BigInteger) : ToJsonObject
+
+data class UnsupportedNumericOutput(val value: Number) : ToJsonObject
 
 // Nullable property
 data class Optional(val name: String, val nickname: String?) : ToJsonObject
@@ -118,12 +126,36 @@ class ToJsonTest {
     }
 
     @Test
-    fun `non-ToJson property skipped`() {
+    fun `non-ToJson property throws serialization exception`() {
         val w = WithOpaque("test", Regex(".*"))
-        val json = w.toJsonObject()
-        assertEquals("test", json["name"].string)
-        assertTrue(json["opaque"].isNull) // skipped
-        assertEquals(1, json.size)
+        val error = assertFailsWith<JsonSerializationException> { w.toJsonObject() }
+        assertEquals("opaque", error.path)
+        assertEquals(Regex::class, error.valueType)
+    }
+
+    @Test
+    fun `unsupported collection element reports its path`() {
+        val value = WithOpaqueList("test", listOf("valid", Regex(".*")))
+        val error = assertFailsWith<JsonSerializationException> { value.toJsonObject() }
+        assertEquals("values[1]", error.path)
+        assertEquals(Regex::class, error.valueType)
+    }
+
+    @Test
+    fun `all supported Number types are serialized`() {
+        val json = NumericOutput(12, BigInteger("9223372036854775808")).toJsonObject()
+        assertEquals("12", json["short"].toJsonString())
+        assertEquals("9223372036854775808", json["large"].toJsonString())
+    }
+
+    @Test
+    fun `unsupported Number property reports its path`() {
+        val error = assertFailsWith<JsonSerializationException> {
+            UnsupportedNumericOutput(AtomicInteger(42)).toJsonObject()
+        }
+        assertEquals("value", error.path)
+        assertEquals(AtomicInteger::class, error.valueType)
+        assertIs<IllegalArgumentException>(error.cause)
     }
 
     @Test

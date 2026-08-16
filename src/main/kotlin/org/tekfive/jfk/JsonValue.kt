@@ -1,6 +1,8 @@
 package org.tekfive.jfk
 
 import org.tekfive.jfk.JsonValue.Companion.toJsonValue
+import java.math.BigDecimal
+import java.math.BigInteger
 import java.time.LocalDate
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -570,8 +572,7 @@ data class JsonString(val value: String) : JsonValue {
  */
 data class JsonNumber(val value: Number) : JsonValue {
     init {
-        val double = value.toDouble()
-        require(!double.isNaN() && !double.isInfinite()) { "JSON numbers must be finite: $value" }
+        value.toJsonNumberLiteral()
     }
 
     override var _accessPath: List<String> = emptyList()
@@ -579,28 +580,54 @@ data class JsonNumber(val value: Number) : JsonValue {
         ?.takeIf { it in Int.MIN_VALUE..Int.MAX_VALUE }
         ?.toInt()
     override val long: Long? get() = value.integralLongOrNull()
-    override val double: Double? get() = value.toDouble()
+    override val double: Double? get() = value.toDouble().takeIf { it.isFinite() }
     override val laxString: String get() = value.toString()
 }
+
+internal fun Number.toJsonNumberLiteral(): String = when (this) {
+    is Byte, is Short, is Int, is Long, is BigInteger -> toString()
+    is BigDecimal -> toString()
+    is Float -> {
+        require(isFinite()) { "JSON numbers must be finite: $this" }
+        toString().removeWholeNumberDecimal()
+    }
+    is Double -> {
+        require(isFinite()) { "JSON numbers must be finite: $this" }
+        toString().removeWholeNumberDecimal()
+    }
+    else -> throw IllegalArgumentException(
+        "Unsupported JSON number type: ${this::class.qualifiedName}",
+    )
+}
+
+private fun String.removeWholeNumberDecimal(): String =
+    if (endsWith(".0") && this != "-0.0") dropLast(2) else this
 
 private fun Number.integralLongOrNull(): Long? {
     return when (this) {
         is Byte, is Short, is Int, is Long -> toLong()
+        is BigInteger -> try {
+            longValueExact()
+        } catch (_: ArithmeticException) {
+            null
+        }
+        is BigDecimal -> try {
+            longValueExact()
+        } catch (_: ArithmeticException) {
+            null
+        }
         is Float, is Double -> {
             val double = toDouble()
             if (double.isFiniteLong()) double.toLong() else null
         }
-        else -> {
-            val double = toDouble()
-            if (double.isFiniteLong()) double.toLong() else null
-        }
+        else -> null
     }
 }
 
 private fun Double.isFiniteLong(): Boolean {
     return !isNaN() && !isInfinite() &&
         this >= Long.MIN_VALUE.toDouble() &&
-        this <= Long.MAX_VALUE.toDouble() &&
+        this < Long.MAX_VALUE.toDouble() &&
         this % 1.0 == 0.0
 }
 

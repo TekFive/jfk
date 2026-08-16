@@ -1,6 +1,9 @@
 package org.tekfive.jfk
 
 import java.io.StringWriter
+import java.math.BigDecimal
+import java.math.BigInteger
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.*
 
 class JsonOutputTest {
@@ -100,9 +103,28 @@ class JsonOutputTest {
     }
 
     @Test
+    fun `large and precise numbers retain their exact value`() {
+        val beyondLong = JsonNumber(BigInteger("9223372036854775808"))
+        assertEquals("9223372036854775808", beyondLong.toJsonString())
+        assertNull(beyondLong.long)
+
+        assertEquals(
+            "1234567890.12345678901234567890",
+            JsonNumber(BigDecimal("1234567890.12345678901234567890")).toJsonString(),
+        )
+        assertNull(JsonNumber(BigDecimal("1E+10000")).double)
+        assertEquals("-0.0", JsonNumber(-0.0).toJsonString())
+    }
+
+    @Test
     fun `non-finite numbers are rejected`() {
         assertFailsWith<IllegalArgumentException> { JsonNumber(Double.NaN) }
         assertFailsWith<IllegalArgumentException> { JsonNumber(Double.POSITIVE_INFINITY) }
         assertFailsWith<IllegalArgumentException> { JsonNumber(Double.NEGATIVE_INFINITY) }
+    }
+
+    @Test
+    fun `unknown Number implementations are rejected`() {
+        assertFailsWith<IllegalArgumentException> { JsonNumber(AtomicInteger(42)) }
     }
 }

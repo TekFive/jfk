@@ -4,7 +4,6 @@ import java.util.Base64
 import kotlin.reflect.KProperty
 import kotlin.reflect.KProperty1
 import kotlin.reflect.KClass
-import kotlin.reflect.KType
 import kotlin.reflect.KVisibility
 import kotlin.reflect.full.isSuperclassOf
 import kotlin.reflect.full.memberProperties
@@ -25,10 +24,10 @@ import kotlin.reflect.full.primaryConstructor
  *
  * **Mapping rules:**
  * - Public primary constructor properties are serialized by name
- * - Primitive types (String, Int, Long, Double, Float, Boolean) are mapped directly
+ * - Strings, finite numeric types, booleans, and enums are mapped directly
  * - Null values are serialized as JsonNull
  * - Nested objects implementing [ToJsonObject] are serialized recursively
- * - Nested objects NOT implementing [ToJsonObject] are silently skipped
+ * - Unsupported property values throw [JsonSerializationException]
  * - Lists are supported for primitives and [ToJsonObject]-backed types
  * - Override [additionalJsonValues] to add extra entries beyond the constructor
  *
@@ -66,6 +65,8 @@ interface ToJsonObject {
      *
      * The default implementation serializes [jsonProperties] and appends [additionalJsonValues].
      * Override for fully custom serialization.
+     *
+     * @throws JsonSerializationException if a property value cannot be represented as JSON.
      */
     fun toJsonObject(): JsonObject {
         return JsonSerialization.serialize(this)
@@ -131,6 +132,21 @@ interface ToJsonValue {
     fun toJsonValue(): JsonValue
 }
 
+/**
+ * Thrown when reflective serialization encounters a value that cannot be represented as JSON.
+ *
+ * @property path dot/bracket path to the unsupported value.
+ * @property valueType runtime type of the unsupported value.
+ */
+class JsonSerializationException(
+    val path: String,
+    val valueType: KClass<*>,
+    cause: Throwable? = null,
+) : RuntimeException(
+    "Cannot serialize value at '${path.ifEmpty { "<root>" }}' of type ${valueType.qualifiedName ?: valueType.simpleName}",
+    cause,
+)
+
 internal object JsonSerialization {
 
     /**
@@ -181,15 +197,12 @@ internal object JsonSerialization {
                 }
                 continue
             }
-            val jsonValue = convertValue(value, prop.returnType)
-            if (jsonValue != null) {
-                map[prop.name] = jsonValue
-            }
+            map[prop.name] = convertValue(value, prop.name)
         }
 
         if (includeAdditionalValues) {
             for ((key, value) in instance.additionalJsonValues()) {
-                map[key] = value.toJsonValue()
+                map[key] = convertNullableValue(value, key)
             }
         }
 
@@ -231,64 +244,54 @@ internal object JsonSerialization {
             ?.classifier as? KClass<*>
     }
 
-    private fun convertValue(value: Any, type: KType): JsonValue? {
+    private fun convertNullableValue(value: Any?, path: String): JsonValue =
+        if (value == null) JsonNull else convertValue(value, path)
+
+    private fun convertValue(value: Any, path: String): JsonValue {
         return when (value) {
             is JsonValue -> value
             is String -> JsonString(value)
-            is Int -> JsonNumber(value)
-            is Long -> JsonNumber(value)
-            is Double -> JsonNumber(value)
-            is Float -> JsonNumber(value)
+            is Number -> try {
+                JsonNumber(value)
+            } catch (e: IllegalArgumentException) {
+                throw JsonSerializationException(path, value::class, e)
+            }
             is Boolean -> JsonBool(value)
             is ByteArray -> JsonString(Base64.getEncoder().encodeToString(value))
-            is ToJsonObject -> value.toJsonObject()
-            is Map<*, *> -> convertMap(value)
-            is Collection<*> -> convertCollection(value, type)
+            is ToJsonObject -> try {
+                value.toJsonObject()
+            } catch (e: JsonSerializationException) {
+                throw JsonSerializationException(joinPath(path, e.path), e.valueType)
+            }
+            is Map<*, *> -> convertMap(value, path)
+            is Collection<*> -> convertCollection(value, path)
             is ToJsonValue -> value.toJsonValue()
             is Enum<*> -> JsonString(value.name)
-            else -> null
+            else -> throw JsonSerializationException(path, value::class)
         }
     }
 
-    private fun convertCollection(list: Collection<*>, type: KType): JsonArray? {
-        val elementType = type.arguments.firstOrNull()?.type
-        val elements = list.map { elem ->
-            if (elem == null) {
-                JsonNull
-            } else if (elementType != null) {
-                convertValue(elem, elementType) ?: return null
-            } else {
-                convertAny(elem) ?: return null
-            }
+    private fun convertCollection(values: Collection<*>, path: String): JsonArray {
+        val elements = values.mapIndexed { index, value ->
+            convertNullableValue(value, "$path[$index]")
         }
         return JsonArray(elements)
     }
 
-    private fun convertMap(map: Map<*, *>): JsonObject? {
+    private fun convertMap(map: Map<*, *>, path: String): JsonObject {
         val entries = LinkedHashMap<String, JsonValue>()
         for ((key, value) in map) {
-            entries[key.toString()] = convertAny(value) ?: return null
+            val stringKey = key.toString()
+            entries[stringKey] = convertNullableValue(value, joinPath(path, stringKey))
         }
         return JsonObject(entries)
     }
 
-    private fun convertAny(value: Any?): JsonValue? {
-        if (value == null) return JsonNull
-        return when (value) {
-            is JsonValue -> value
-            is String -> JsonString(value)
-            is Int -> JsonNumber(value)
-            is Long -> JsonNumber(value)
-            is Double -> JsonNumber(value)
-            is Float -> JsonNumber(value)
-            is Boolean -> JsonBool(value)
-            is ByteArray -> JsonString(Base64.getEncoder().encodeToString(value))
-            is ToJsonObject -> value.toJsonObject()
-            is Map<*, *> -> convertMap(value)
-            is Collection<*> -> JsonArray(value.map { convertAny(it) ?: return null })
-            is ToJsonValue -> value.toJsonValue()
-            is Enum<*> -> JsonString(value.name)
-            else -> null
+    private fun joinPath(prefix: String, suffix: String): String =
+        when {
+            prefix.isEmpty() -> suffix
+            suffix.isEmpty() -> prefix
+            suffix.startsWith("[") -> "$prefix$suffix"
+            else -> "$prefix.$suffix"
         }
-    }
 }

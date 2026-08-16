@@ -28,12 +28,7 @@ internal object JsonWriter {
     }
 
     private fun formatNumber(number: Number): String {
-        val d = number.toDouble()
-        return if (d == d.toLong().toDouble() && !d.isInfinite()) {
-            number.toLong().toString()
-        } else {
-            number.toString()
-        }
+        return number.toJsonNumberLiteral()
     }
 
     private fun writeString(sb: StringBuilder, value: String) {
