@@ -18,3 +18,7 @@ build
 .project
 .classpath
 .settings/
+
+# The Gradle wrapper jar must be committed despite the *.jar rule above:
+# JitPack and fresh clones need it to run the build.
+!gradle/wrapper/gradle-wrapper.jar
