@@ -1,6 +1,8 @@
 package org.tekfive.jfk
 
+import java.time.Instant as JavaInstant
 import java.util.Base64
+import kotlin.time.Instant as KotlinInstant
 import kotlin.reflect.KProperty
 import kotlin.reflect.KProperty1
 import kotlin.reflect.KClass
@@ -25,6 +27,7 @@ import kotlin.reflect.full.primaryConstructor
  * **Mapping rules:**
  * - Public primary constructor properties are serialized by name
  * - Strings, finite numeric types, booleans, and enums are mapped directly
+ * - Java and Kotlin Instant values are mapped to ISO-8601 strings
  * - Null values are serialized as JsonNull
  * - Nested objects implementing [ToJsonObject] are serialized recursively
  * - Unsupported property values throw [JsonSerializationException]
@@ -257,6 +260,8 @@ internal object JsonSerialization {
                 throw JsonSerializationException(path, value::class, e)
             }
             is Boolean -> JsonBool(value)
+            is JavaInstant -> JsonString(value.toString())
+            is KotlinInstant -> JsonString(value.toString())
             is ByteArray -> JsonString(Base64.getEncoder().encodeToString(value))
             is ToJsonObject -> try {
                 value.toJsonObject()

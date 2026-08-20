@@ -3,12 +3,13 @@ package org.tekfive.jfk
 import org.tekfive.jfk.JsonValue.Companion.toJsonValue
 import java.math.BigDecimal
 import java.math.BigInteger
+import java.time.Instant as JavaInstant
 import java.time.LocalDate
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
 import kotlin.reflect.KProperty
-import kotlin.time.Instant
+import kotlin.time.Instant as KotlinInstant
 
 
 /**
@@ -94,7 +95,7 @@ sealed interface JsonValue {
                 laxLong = str.toLongOrNull()
                 if (laxLong == null) {
                     try {
-                        laxLong = Instant.parse(str).toEpochMilliseconds()
+                        laxLong = KotlinInstant.parse(str).toEpochMilliseconds()
                     } catch (e: Exception) {}
                 }
             }
@@ -235,6 +236,8 @@ sealed interface JsonValue {
                             "first" to toJsonValue(value.first, visitedValues),
                             "second" to toJsonValue(value.second, visitedValues),
                         ))
+                        is JavaInstant -> JsonString(value.toString())
+                        is KotlinInstant -> JsonString(value.toString())
                         is LocalDate -> toJsonValue(value.toString())
                         else -> JsonString(value.toString())
                     }

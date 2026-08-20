@@ -1,5 +1,6 @@
 package org.tekfive.jfk
 
+import java.time.Instant as JavaInstant
 import java.util.Base64
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty1
@@ -12,6 +13,7 @@ import kotlin.reflect.full.companionObjectInstance
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
+import kotlin.time.Instant as KotlinInstant
 
 /**
  * Interface for deserializing JSON objects into typed instances.
@@ -30,6 +32,7 @@ import kotlin.reflect.full.primaryConstructor
  * **Mapping rules:**
  * - Each constructor parameter is matched to a JSON property by name
  * - Primitive types (String, Int, Long, Double, Float, Boolean) are mapped directly
+ * - ISO-8601 strings are mapped to Java and Kotlin Instant values
  * - If [lax] is true (default), string values are coerced to numeric/boolean types
  * - Nullable parameters receive null when the JSON property is missing or null
  * - Non-nullable List parameters receive an empty list when the JSON property is null
@@ -371,6 +374,8 @@ internal object JsonReflection {
             classifier == Double::class -> if (lax) value.laxDouble else value.double
             classifier == Float::class -> (if (lax) value.laxDouble else value.double)?.toFloat()
             classifier == Boolean::class -> if (lax) value.laxBoolean else value.boolean
+            classifier == JavaInstant::class -> decodeInstant(value, path, "java.time.Instant", JavaInstant::parse)
+            classifier == KotlinInstant::class -> decodeInstant(value, path, "kotlin.time.Instant", KotlinInstant::parse)
             classifier == ByteArray::class -> decodeByteArray(value, path)
             classifier == JsonValue::class -> value
             classifier == JsonContainer::class -> value as? JsonContainer
@@ -438,6 +443,26 @@ internal object JsonReflection {
                 "Base64-encoded String",
                 value,
                 "Required Base64-encoded String at '${path.ifEmpty { "<root>" }}' but found ${JsonMappingException.describeValue(value)}: ${e.message}",
+            )
+        }
+    }
+
+    private fun <T> decodeInstant(
+        value: JsonValue,
+        path: String,
+        typeName: String,
+        parse: (String) -> T,
+    ): T? {
+        val encoded = value.string ?: return null
+        return try {
+            parse(encoded)
+        } catch (e: Exception) {
+            throw JsonMappingException(
+                path,
+                "ISO-8601 String (for $typeName)",
+                value,
+                "Required valid ISO-8601 String for $typeName at '${path.ifEmpty { "<root>" }}' " +
+                    "but found ${JsonMappingException.describeValue(value)}: ${e.message}",
             )
         }
     }

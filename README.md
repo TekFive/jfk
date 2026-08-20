@@ -89,7 +89,8 @@ JFK exposes three accessor styles:
 
 `FromJsonObject` maps JSON object keys to primary constructor parameters by exact
 name. `ToJsonObject` writes public primary-constructor properties with the same
-key names. There is no automatic case conversion.
+key names. There is no automatic case conversion. Both `java.time.Instant` and
+`kotlin.time.Instant` are represented as ISO-8601 strings.
 
 Missing or `null` values follow Kotlin constructor semantics:
 
