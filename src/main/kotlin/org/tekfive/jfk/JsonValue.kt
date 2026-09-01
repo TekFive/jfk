@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.uuid.ExperimentalUuidApi::class)
+
 package org.tekfive.jfk
 
 import org.tekfive.jfk.JsonValue.Companion.toJsonValue
@@ -5,11 +7,13 @@ import java.math.BigDecimal
 import java.math.BigInteger
 import java.time.Instant as JavaInstant
 import java.time.LocalDate
+import java.util.UUID as JavaUuid
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
 import kotlin.reflect.KProperty
 import kotlin.time.Instant as KotlinInstant
+import kotlin.uuid.Uuid as KotlinUuid
 
 
 /**
@@ -238,6 +242,8 @@ sealed interface JsonValue {
                         ))
                         is JavaInstant -> JsonString(value.toString())
                         is KotlinInstant -> JsonString(value.toString())
+                        is JavaUuid -> JsonString(value.toString())
+                        is KotlinUuid -> JsonString(value.toString())
                         is LocalDate -> toJsonValue(value.toString())
                         else -> JsonString(value.toString())
                     }

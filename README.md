@@ -90,7 +90,8 @@ JFK exposes three accessor styles:
 `FromJsonObject` maps JSON object keys to primary constructor parameters by exact
 name. `ToJsonObject` writes public primary-constructor properties with the same
 key names. There is no automatic case conversion. Both `java.time.Instant` and
-`kotlin.time.Instant` are represented as ISO-8601 strings.
+`kotlin.time.Instant` are represented as ISO-8601 strings. Both `java.util.UUID`
+and `kotlin.uuid.Uuid` are represented as canonical UUID strings.
 
 Missing or `null` values follow Kotlin constructor semantics:
 

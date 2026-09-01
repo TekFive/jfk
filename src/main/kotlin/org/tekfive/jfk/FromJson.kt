@@ -1,7 +1,10 @@
+@file:OptIn(kotlin.uuid.ExperimentalUuidApi::class)
+
 package org.tekfive.jfk
 
 import java.time.Instant as JavaInstant
 import java.util.Base64
+import java.util.UUID as JavaUuid
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.KParameter
@@ -14,6 +17,7 @@ import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
 import kotlin.time.Instant as KotlinInstant
+import kotlin.uuid.Uuid as KotlinUuid
 
 /**
  * Interface for deserializing JSON objects into typed instances.
@@ -33,6 +37,7 @@ import kotlin.time.Instant as KotlinInstant
  * - Each constructor parameter is matched to a JSON property by name
  * - Primitive types (String, Int, Long, Double, Float, Boolean) are mapped directly
  * - ISO-8601 strings are mapped to Java and Kotlin Instant values
+ * - Canonical UUID strings are mapped to Java and Kotlin UUID values
  * - If [lax] is true (default), string values are coerced to numeric/boolean types
  * - Nullable parameters receive null when the JSON property is missing or null
  * - Non-nullable List parameters receive an empty list when the JSON property is null
@@ -376,6 +381,8 @@ internal object JsonReflection {
             classifier == Boolean::class -> if (lax) value.laxBoolean else value.boolean
             classifier == JavaInstant::class -> decodeInstant(value, path, "java.time.Instant", JavaInstant::parse)
             classifier == KotlinInstant::class -> decodeInstant(value, path, "kotlin.time.Instant", KotlinInstant::parse)
+            classifier == JavaUuid::class -> decodeUuid(value, path, "java.util.UUID", JavaUuid::fromString)
+            classifier == KotlinUuid::class -> decodeUuid(value, path, "kotlin.uuid.Uuid", KotlinUuid::parse)
             classifier == ByteArray::class -> decodeByteArray(value, path)
             classifier == JsonValue::class -> value
             classifier == JsonContainer::class -> value as? JsonContainer
@@ -462,6 +469,26 @@ internal object JsonReflection {
                 "ISO-8601 String (for $typeName)",
                 value,
                 "Required valid ISO-8601 String for $typeName at '${path.ifEmpty { "<root>" }}' " +
+                    "but found ${JsonMappingException.describeValue(value)}: ${e.message}",
+            )
+        }
+    }
+
+    private fun <T> decodeUuid(
+        value: JsonValue,
+        path: String,
+        typeName: String,
+        parse: (String) -> T,
+    ): T? {
+        val encoded = value.string ?: return null
+        return try {
+            parse(encoded)
+        } catch (e: IllegalArgumentException) {
+            throw JsonMappingException(
+                path,
+                "UUID String (for $typeName)",
+                value,
+                "Required valid UUID String for $typeName at '${path.ifEmpty { "<root>" }}' " +
                     "but found ${JsonMappingException.describeValue(value)}: ${e.message}",
             )
         }

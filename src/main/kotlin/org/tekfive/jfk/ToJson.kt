@@ -1,8 +1,12 @@
+@file:OptIn(kotlin.uuid.ExperimentalUuidApi::class)
+
 package org.tekfive.jfk
 
 import java.time.Instant as JavaInstant
 import java.util.Base64
+import java.util.UUID as JavaUuid
 import kotlin.time.Instant as KotlinInstant
+import kotlin.uuid.Uuid as KotlinUuid
 import kotlin.reflect.KProperty
 import kotlin.reflect.KProperty1
 import kotlin.reflect.KClass
@@ -28,6 +32,7 @@ import kotlin.reflect.full.primaryConstructor
  * - Public primary constructor properties are serialized by name
  * - Strings, finite numeric types, booleans, and enums are mapped directly
  * - Java and Kotlin Instant values are mapped to ISO-8601 strings
+ * - Java and Kotlin UUID values are mapped to canonical strings
  * - Null values are serialized as JsonNull
  * - Nested objects implementing [ToJsonObject] are serialized recursively
  * - Unsupported property values throw [JsonSerializationException]
@@ -262,6 +267,8 @@ internal object JsonSerialization {
             is Boolean -> JsonBool(value)
             is JavaInstant -> JsonString(value.toString())
             is KotlinInstant -> JsonString(value.toString())
+            is JavaUuid -> JsonString(value.toString())
+            is KotlinUuid -> JsonString(value.toString())
             is ByteArray -> JsonString(Base64.getEncoder().encodeToString(value))
             is ToJsonObject -> try {
                 value.toJsonObject()
