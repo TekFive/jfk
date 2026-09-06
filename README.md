@@ -85,6 +85,47 @@ JFK exposes three accessor styles:
 - Lax accessors coerce compatible strings, such as `value["age"].laxInt`.
 - Required accessors throw with path context, such as `value["age"].reqInt`.
 
+## JSON Paths
+
+Use `JsonPath` for an exact location containing object keys and zero-based array
+indices:
+
+```kotlin
+val path = JsonPath.parse("$.users[0].name")
+val name = value.at(path).reqString
+
+val samePath = JsonPath.Root.key("users").index(0).key("name")
+check(path == samePath)
+```
+
+Paths start with `$`, which identifies the supplied value itself, including a
+subtree or root array. Each segment is `.identifier`, `["quoted key"]`, or
+`[index]`. Identifiers use ASCII letters, digits, and underscores and cannot start
+with a digit. Quoted keys use JSON string escaping and can contain any key,
+including punctuation, Unicode, or the empty string.
+
+| Path | Meaning |
+| --- | --- |
+| `$.users[0].name` | First user's name |
+| `$[2].id` | ID in the third element of a root array |
+| `$.matrix[1][3]` | Fourth element of the second row |
+| `$["a.b"]["x[y]"]` | Keys containing punctuation |
+| `$["0"]` | Object key `"0"` |
+| `$[0]` | Array index zero |
+| `$[""]` | Empty object key |
+
+Paths are immutable and compare by their typed segments. `toString()` produces a
+canonical path using dot notation wherever possible; parsing it returns an equal
+path. Indices must fit a nonnegative Kotlin `Int`, without leading zeroes.
+Whitespace outside quoted keys, negative indices, wildcards, slices, and implicit
+traversal across arrays are unsupported. Invalid syntax throws
+`JsonPathParseException` with a zero-based UTF-16 `offset` into the input.
+
+Missing keys, out-of-range indices, and incompatible types return `JsonNull`, as
+with chained accessors. Explicit JSON null also returns `JsonNull`.
+The existing `at(String)` retains its dot-separated object-key behavior; use
+`at(JsonPath.parse(...))` for this notation.
+
 ## Mapping Rules
 
 `FromJsonObject` maps JSON object keys to primary constructor parameters by exact

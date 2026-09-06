@@ -65,6 +65,22 @@ sealed interface JsonValue {
         return current
     }
 
+    /**
+     * Resolves an exact [path] relative to this value, including array indices.
+     * The root path returns this value. Missing keys, out-of-range indices, and
+     * incompatible types return [JsonNull], just like chained [get] calls.
+     */
+    fun at(path: JsonPath): JsonValue {
+        var current: JsonValue = this
+        for (segment in path.segments) {
+            current = when (segment) {
+                is JsonPathSegment.Key -> current[segment.name]
+                is JsonPathSegment.Index -> current[segment.index]
+            }
+        }
+        return current
+    }
+
     // Strict accessors — return null if the type doesn't match
     /** Returns this value as a [JsonObject], or `null` when it is not an object. */
     val obj: JsonObject? get() = null
