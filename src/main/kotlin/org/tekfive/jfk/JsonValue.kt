@@ -5,6 +5,8 @@ package org.tekfive.jfk
 import org.tekfive.jfk.JsonValue.Companion.toJsonValue
 import java.math.BigDecimal
 import java.math.BigInteger
+import java.net.URI
+import java.net.URISyntaxException
 import java.time.Instant as JavaInstant
 import java.time.LocalDate
 import java.util.UUID as JavaUuid
@@ -308,6 +310,17 @@ class JsonObject(properties: Map<String, Any?> = emptyMap()) : JsonContainer {
 
     private val _entries: MutableMap<String, JsonValue> = properties.map { (key, value) -> key to toJsonValue(value) }.toMap().toMutableMap()
 
+    /**
+     * Builds an object from [values], skipping Kotlin null values.
+     * Values use JFK conversion rules; pass [JsonNull] to retain an explicit JSON null.
+     * Duplicate names keep the last non-null value and their original insertion order.
+     */
+    constructor(vararg values: Pair<String, Any?>) : this(emptyMap()) {
+        for ((name, value) in values) {
+            if (value != null) this[name] = value
+        }
+    }
+
     override var _accessPath: List<String> = emptyList()
 
     /** Object entries keyed by property name. */
@@ -331,6 +344,35 @@ class JsonObject(properties: Map<String, Any?> = emptyMap()) : JsonContainer {
     fun array(name: String): JsonArray? = get(name).array
     /** Returns the named property as a string, or `null`. */
     fun string(name: String): String? = get(name).string
+    /**
+     * Returns the named property as a Java instant, or `null` if missing or invalid.
+     * Accepts ISO-8601 strings (preserving nanoseconds), integral epoch-millisecond
+     * numbers, and strings containing a Long epoch-millisecond value.
+     * Fractional milliseconds and numeric values outside the Long range are rejected.
+     */
+    fun instant(name: String): JavaInstant? {
+        val value = get(name)
+        val text = value.string
+        val epochMillis = value.long ?: text?.toLongOrNull()
+        if (epochMillis != null) return JavaInstant.ofEpochMilli(epochMillis)
+        if (text == null) return null
+        return try {
+            JavaInstant.parse(text)
+        } catch (_: java.time.format.DateTimeParseException) {
+            null
+        }
+    }
+
+    /** Returns the named string property as a URI, or `null` if missing or invalid. */
+    fun uri(name: String): URI? {
+        val text = string(name) ?: return null
+        return try {
+            URI(text)
+        } catch (_: URISyntaxException) {
+            null
+        }
+    }
+
     /** Returns the named property as a long, or `null`. */
     fun long(name: String): Long? = get(name).long
     /** Returns the named property as a double, or `null`. */
