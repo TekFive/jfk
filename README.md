@@ -85,6 +85,10 @@ JFK exposes three accessor styles:
 - Lax accessors coerce compatible strings, such as `value["age"].laxInt`.
 - Required accessors throw with path context, such as `value["age"].reqInt`.
 
+`JsonObject.bigDecimal(name, treatEmptyStringAsNull = false)` accepts numbers and
+decimal strings. Missing or null values return `null`; empty strings also return
+`null` when the flag is true. Invalid values throw `JsonMappingException`.
+
 ## JSON Paths
 
 Use `JsonPath` for an exact location containing object keys and zero-based array
@@ -133,6 +137,9 @@ name. `ToJsonObject` writes public primary-constructor properties with the same
 key names. There is no automatic case conversion. Both `java.time.Instant` and
 `kotlin.time.Instant` are represented as ISO-8601 strings. Both `java.util.UUID`
 and `kotlin.uuid.Uuid` are represented as canonical UUID strings.
+`java.math.BigDecimal` accepts numbers and decimal strings, even when `lax` is
+false. Use decimal strings when parsing JSON that must preserve arbitrary
+precision: the JSON parser stores fractional numbers as `Double`.
 
 Missing or `null` values follow Kotlin constructor semantics:
 

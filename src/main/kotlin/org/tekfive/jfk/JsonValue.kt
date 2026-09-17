@@ -377,6 +377,18 @@ class JsonObject(properties: Map<String, Any?> = emptyMap()) : JsonContainer {
     fun long(name: String): Long? = get(name).long
     /** Returns the named property as a double, or `null`. */
     fun double(name: String): Double? = get(name).double
+    /**
+     * Returns the named number or decimal string as a [BigDecimal], or `null` if missing or null.
+     * Empty strings return `null` only when [treatEmptyStringAsNull] is true.
+     *
+     * @throws JsonMappingException if the value is not a valid decimal number or string.
+     */
+    fun bigDecimal(name: String, treatEmptyStringAsNull: Boolean = false): BigDecimal? {
+        val value = get(name)
+        if (value.isNull || (treatEmptyStringAsNull && value.string == "")) return null
+        return value.toBigDecimal(name)
+    }
+
     /** Returns the named property as a boolean, or `null`. */
     fun boolean(name: String): Boolean? = get(name).boolean
 
@@ -649,6 +661,16 @@ data class JsonNumber(val value: Number) : JsonValue {
     override val long: Long? get() = value.integralLongOrNull()
     override val double: Double? get() = value.toDouble().takeIf { it.isFinite() }
     override val laxString: String get() = value.toString()
+}
+
+internal fun JsonValue.toBigDecimal(path: String): BigDecimal {
+    val text = when (this) {
+        is JsonString -> value
+        is JsonNumber -> value.toString()
+        else -> throw JsonMappingException(path, "decimal number or string", this)
+    }
+    return text.toBigDecimalOrNull()
+        ?: throw JsonMappingException(path, "decimal number or string", this)
 }
 
 internal fun Number.toJsonNumberLiteral(): String = when (this) {

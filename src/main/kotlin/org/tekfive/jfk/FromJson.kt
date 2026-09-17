@@ -2,6 +2,7 @@
 
 package org.tekfive.jfk
 
+import java.math.BigDecimal
 import java.time.Instant as JavaInstant
 import java.util.Base64
 import java.util.UUID as JavaUuid
@@ -36,6 +37,7 @@ import kotlin.uuid.Uuid as KotlinUuid
  * **Mapping rules:**
  * - Each constructor parameter is matched to a JSON property by name
  * - Primitive types (String, Int, Long, Double, Float, Boolean) are mapped directly
+ * - Numbers and decimal strings are mapped to BigDecimal, including when lax is false
  * - ISO-8601 strings are mapped to Java and Kotlin Instant values
  * - Canonical UUID strings are mapped to Java and Kotlin UUID values
  * - If [lax] is true (default), string values are coerced to numeric/boolean types
@@ -378,6 +380,7 @@ internal object JsonReflection {
             classifier == Long::class -> if (lax) value.laxLong else value.long
             classifier == Double::class -> if (lax) value.laxDouble else value.double
             classifier == Float::class -> (if (lax) value.laxDouble else value.double)?.toFloat()
+            classifier == BigDecimal::class -> value.toBigDecimal(path)
             classifier == Boolean::class -> if (lax) value.laxBoolean else value.boolean
             classifier == JavaInstant::class -> decodeInstant(value, path, "java.time.Instant", JavaInstant::parse)
             classifier == KotlinInstant::class -> decodeInstant(value, path, "kotlin.time.Instant", KotlinInstant::parse)
