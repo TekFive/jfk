@@ -102,6 +102,16 @@ val samePath = JsonPath.Root.key("users").index(0).key("name")
 check(path == samePath)
 ```
 
+`JsonPath` implements `ToJsonObject`, and its companion implements
+`FromJsonObject<JsonPath>`. Paths serialize as typed segments, for example
+`{"segments":[{"name":"users"},{"index":0},{"name":"name"}]}`.
+The root path serializes as `{"segments":[]}`.
+
+```kotlin
+val restored = path.toJsonString().fromJsonOrThrow(JsonPath)
+check(restored == path)
+```
+
 Paths start with `$`, which identifies the supplied value itself, including a
 subtree or root array. Each segment is `.identifier`, `["quoted key"]`, or
 `[index]`. Identifiers use ASCII letters, digits, and underscores and cannot start

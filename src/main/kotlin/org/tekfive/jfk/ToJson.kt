@@ -87,7 +87,17 @@ interface ToJsonObject {
      * requires at least one property so callers do not accidentally create an empty object.
      */
     fun toJsonObject(firstIncludedProperty: KProperty<*>, vararg additionalIncludedProperties: KProperty<*>): JsonObject {
-        return JsonSerialization.serializeOnly(this, listOf(firstIncludedProperty) + additionalIncludedProperties)
+        return toJsonObject(listOf(firstIncludedProperty) + additionalIncludedProperties)
+    }
+
+    /**
+     * Serialize only the provided public properties from this instance.
+     *
+     * Each property must belong to this instance's class or a superclass.
+     * An empty list produces an empty object.
+     */
+    fun toJsonObject(includedProperties: List<KProperty<*>>): JsonObject {
+        return JsonSerialization.serializeOnly(this, includedProperties)
     }
 
     /**
@@ -97,7 +107,17 @@ interface ToJsonObject {
      * requires at least one property so callers cannot accidentally request no exclusions.
      */
     fun toJsonObjectExcluding(firstExcludedProperty: KProperty<*>, vararg additionalExcludedProperties: KProperty<*>): JsonObject {
-        return JsonSerialization.serializeExcluding(this, listOf(firstExcludedProperty) + additionalExcludedProperties)
+        return toJsonObjectExcluding(listOf(firstExcludedProperty) + additionalExcludedProperties)
+    }
+
+    /**
+     * Serialize this instance like [toJsonObject], excluding the provided public properties.
+     *
+     * Each property must belong to this instance's class or a superclass.
+     * An empty list excludes no properties.
+     */
+    fun toJsonObjectExcluding(excludedProperties: List<KProperty<*>>): JsonObject {
+        return JsonSerialization.serializeExcluding(this, excludedProperties)
     }
 
     /**

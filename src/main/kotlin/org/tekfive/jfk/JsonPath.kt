@@ -1,14 +1,38 @@
 package org.tekfive.jfk
 
 import java.util.Collections
+import kotlin.reflect.KProperty
 
 /** One object key or zero-based array index in a [JsonPath]. */
-sealed interface JsonPathSegment {
+sealed interface JsonPathSegment : ToJsonObject {
     data class Key(val name: String) : JsonPathSegment
 
     data class Index(val index: Int) : JsonPathSegment {
         init {
             require(index >= 0) { "A JSON path index must be nonnegative" }
+        }
+    }
+
+    companion object : FromJsonObject<JsonPathSegment> {
+        override fun fromJson(json: JsonObject): JsonPathSegment = fromJson(json, false)
+
+        override fun fromJson(
+            json: JsonObject,
+            treatEmptyStringAsNull: Boolean,
+            vararg overrides: Pair<KProperty<*>, Any?>,
+        ): JsonPathSegment {
+            if (json.containsKey("name") == json.containsKey("index")) {
+                throw JsonMappingException("", "path segment with either name or index", json)
+            }
+            if (json.containsKey("name")) {
+                val value = json["name"]
+                // An empty key names a real object property, even when empty strings are treated as null.
+                return Key(value.string ?: throw JsonMappingException("name", "String", value))
+            }
+            val value = json["index"]
+            val index = value.int?.takeIf { it >= 0 }
+                ?: throw JsonMappingException("index", "nonnegative Int", value)
+            return Index(index)
         }
     }
 }
@@ -30,8 +54,9 @@ class JsonPathParseException(message: String, val offset: Int) :
  *
  * [toString] uses dot notation for identifier keys and quoted brackets otherwise.
  * Parsing this canonical representation always produces an equal path.
+ * JSON objects use a `segments` array of `{"name":"key"}` or `{"index":0}` objects.
  */
-class JsonPath(segments: List<JsonPathSegment>) {
+class JsonPath(segments: List<JsonPathSegment>) : ToJsonObject {
     /** A defensive, unmodifiable copy of the supplied segments. */
     val segments: List<JsonPathSegment> = Collections.unmodifiableList(ArrayList(segments))
 
@@ -62,7 +87,7 @@ class JsonPath(segments: List<JsonPathSegment>) {
         }
     }
 
-    companion object {
+    companion object : FromJsonObject<JsonPath> {
         /** The supplied value itself. */
         val Root: JsonPath = JsonPath(emptyList())
 
