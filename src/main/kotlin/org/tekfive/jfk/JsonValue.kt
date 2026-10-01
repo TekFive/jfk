@@ -373,6 +373,16 @@ class JsonObject(properties: Map<String, Any?> = emptyMap()) : JsonContainer {
         }
     }
 
+    /** Returns the named string property as a Java UUID, or `null` if missing or invalid. */
+    fun uuid(name: String): JavaUuid? {
+        val text = string(name) ?: return null
+        return try {
+            JavaUuid.fromString(text)
+        } catch (_: IllegalArgumentException) {
+            null
+        }
+    }
+
     /** Returns the named property as a long, or `null`. */
     fun long(name: String): Long? = get(name).long
     /** Returns the named property as a double, or `null`. */
@@ -407,6 +417,8 @@ class JsonObject(properties: Map<String, Any?> = emptyMap()) : JsonContainer {
     fun reqArray(name: String): JsonArray = get(name).reqArray
     /** Returns the named property as a required string. */
     fun reqString(name: String): String = get(name).reqString
+    /** Returns the named property as a Java UUID, or throws with path context if missing or invalid. */
+    fun reqUuid(name: String): JavaUuid = uuid(name) ?: get(name).throwReq("UUID")
     /** Returns the named property as a required long. */
     fun reqLong(name: String): Long = get(name).reqLong
     /** Returns the named property as a required double. */

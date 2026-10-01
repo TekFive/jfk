@@ -84,6 +84,8 @@ JFK exposes three accessor styles:
 - Strict accessors return `null` on type mismatch, such as `value["age"].int`.
 - Lax accessors coerce compatible strings, such as `value["age"].laxInt`.
 - Required accessors throw with path context, such as `value["age"].reqInt`.
+- `json.uuid("id")` reads a UUID string as `java.util.UUID`, returning `null` if
+  missing or invalid. `json.reqUuid("id")` throws with path context instead.
 
 `JsonObject.bigDecimal(name, treatEmptyStringAsNull = false)` accepts numbers and
 decimal strings. Missing or null values return `null`; empty strings also return
