@@ -4,6 +4,7 @@ package org.tekfive.jfk
 
 import java.math.BigDecimal
 import java.time.Instant as JavaInstant
+import java.time.LocalDate
 import java.util.Base64
 import java.util.UUID as JavaUuid
 import kotlin.reflect.KClass
@@ -39,6 +40,7 @@ import kotlin.uuid.Uuid as KotlinUuid
  * - Primitive types (String, Int, Long, Double, Float, Boolean) are mapped directly
  * - Numbers and decimal strings are mapped to BigDecimal, including when lax is false
  * - ISO-8601 strings are mapped to Java and Kotlin Instant values
+ * - ISO-8601 date strings are mapped to Java LocalDate values
  * - Canonical UUID strings are mapped to Java and Kotlin UUID values
  * - If [lax] is true (default), string values are coerced to numeric/boolean types
  * - Nullable parameters receive null when the JSON property is missing or null
@@ -382,8 +384,9 @@ internal object JsonReflection {
             classifier == Float::class -> (if (lax) value.laxDouble else value.double)?.toFloat()
             classifier == BigDecimal::class -> value.toBigDecimal(path)
             classifier == Boolean::class -> if (lax) value.laxBoolean else value.boolean
-            classifier == JavaInstant::class -> decodeInstant(value, path, "java.time.Instant", JavaInstant::parse)
-            classifier == KotlinInstant::class -> decodeInstant(value, path, "kotlin.time.Instant", KotlinInstant::parse)
+            classifier == JavaInstant::class -> decodeIso8601(value, path, "java.time.Instant", JavaInstant::parse)
+            classifier == KotlinInstant::class -> decodeIso8601(value, path, "kotlin.time.Instant", KotlinInstant::parse)
+            classifier == LocalDate::class -> decodeIso8601(value, path, "java.time.LocalDate", LocalDate::parse)
             classifier == JavaUuid::class -> decodeUuid(value, path, "java.util.UUID", JavaUuid::fromString)
             classifier == KotlinUuid::class -> decodeUuid(value, path, "kotlin.uuid.Uuid", KotlinUuid::parse)
             classifier == ByteArray::class -> decodeByteArray(value, path)
@@ -457,7 +460,7 @@ internal object JsonReflection {
         }
     }
 
-    private fun <T> decodeInstant(
+    private fun <T> decodeIso8601(
         value: JsonValue,
         path: String,
         typeName: String,

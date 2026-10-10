@@ -3,6 +3,7 @@
 package org.tekfive.jfk
 
 import java.time.Instant as JavaInstant
+import java.time.LocalDate
 import java.util.Base64
 import java.util.UUID as JavaUuid
 import kotlin.time.Instant as KotlinInstant
@@ -32,6 +33,7 @@ import kotlin.reflect.full.primaryConstructor
  * - Public primary constructor properties are serialized by name
  * - Strings, finite numeric types, booleans, and enums are mapped directly
  * - Java and Kotlin Instant values are mapped to ISO-8601 strings
+ * - Java LocalDate values are mapped to ISO-8601 date strings
  * - Java and Kotlin UUID values are mapped to canonical strings
  * - Null values are serialized as JsonNull
  * - Nested objects implementing [ToJsonObject] are serialized recursively
@@ -287,6 +289,7 @@ internal object JsonSerialization {
             is Boolean -> JsonBool(value)
             is JavaInstant -> JsonString(value.toString())
             is KotlinInstant -> JsonString(value.toString())
+            is LocalDate -> JsonString(value.toString())
             is JavaUuid -> JsonString(value.toString())
             is KotlinUuid -> JsonString(value.toString())
             is ByteArray -> JsonString(Base64.getEncoder().encodeToString(value))
